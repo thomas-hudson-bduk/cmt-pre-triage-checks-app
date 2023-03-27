@@ -3,7 +3,7 @@ library(shiny)
 # Define UI ----
 
 info_text = readr::read_file("lorum.txt")
-source("checks.R")
+source("checks_module.R")
 
 ui <- fluidPage(
     tags$head(tags$style(
