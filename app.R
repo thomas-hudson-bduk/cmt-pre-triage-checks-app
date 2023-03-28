@@ -3,7 +3,7 @@ library(shiny)
 # Define UI ----
 
 info_text = readr::read_file("lorum.txt")
-source("checks.R")
+source("checks_module.R")
 
 ui <- fluidPage(
     tags$head(tags$style(
@@ -11,7 +11,7 @@ ui <- fluidPage(
     )),
     
     navbarPage(
-        title = "WIP: CMT pre-triage application - v0.2.0",
+        title = "CMT pre-triage application",
         
         tabPanel("Information", info_text),
         
@@ -77,14 +77,17 @@ server <- function(input, output) {
     })
     
     data <- reactive({
-        req(input$file_upload)
-        fread(input$file_upload$datapath)
+        data <- fread(input$file_upload$datapath)
+        data
     })
     
-    checks_server("checks_module", data = data, file_upload = reactive(input$file_upload))
+    checks_server("checks_module",
+                  data = data,
+                  file_upload = reactive(input$file_upload))
     
     output$upload_output <- renderPrint({
-        cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]), sep = "\n")
+        cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]),
+            sep = "\n")
     })
     
     output$detailed_upload_output <- renderPrint({
