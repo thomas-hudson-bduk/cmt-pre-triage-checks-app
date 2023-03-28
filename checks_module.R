@@ -9,24 +9,24 @@ required_columns <-
 checks_ui <- function(id, label = "checks_ui") {
   ns <- NS(id)
   sidebarLayout(
-    sidebarPanel(selectInput(
-      inputId = ns("selected_check"),
-      label = "",
-      choices = c(
-        '1. Column names' = "selected_check_1",
-        '2. Duplicate UPRNs' = "selected_check_2",
-        '3. Current Technology' = "selected_check_3"
+    sidebarPanel(
+      selectInput(
+        inputId = ns("selected_check"),
+        label = "",
+        choices = c("1. Column names",
+                    "2. Duplicate UPRNs",
+                    "3. Current Technology")
+      ),
+      conditionalPanel(
+        condition = "input.selected_check == `2. Duplicate UPRNs`",
+        selectInput("column", label = "Select a column:", choices = NULL)
       )
-    ),
-    conditionalPanel(
-      condition = "input.selected_check == 'selected_check_2'",
-      selectInput(ns("column"), label = "Select a column:", choices = NULL)
-    )
     ),
     mainPanel(
       verbatimTextOutput(ns("upload_status")),
       verbatimTextOutput(ns("check_1")),
-      verbatimTextOutput(ns("check_2"))
+      verbatimTextOutput(ns("check_2")),
+      verbatimTextOutput(ns("check_3"))
     )
   )
 }
@@ -35,7 +35,6 @@ checks_ui <- function(id, label = "checks_ui") {
 checks_server <- function(id, data, file_upload) {
   moduleServer(id,
                function(input, output, session) {
-                 
                  observeEvent(file_upload(), {
                    updateSelectInput(session, "column", choices = colnames(data()))
                  })
@@ -49,16 +48,16 @@ checks_server <- function(id, data, file_upload) {
                  
                  output$check_1 <- renderPrint({
                    if (!is.null(file_upload()) &
-                       input$selected_check == "selected_check_1") {
+                       input$selected_check == "1. Column names") {
                      # Check if all the required columns exist in the data table
                      missing_columns <-
                        setdiff(tolower(required_columns), tolower(colnames(data())))
                      
                      # Output the result
                      if (length(missing_columns) == 0) {
-                       cat("PASSED check 1. \nAll required columns are present.\n")
+                       cat("PASSED check 1. \n\nAll required columns are present.\n")
                      } else {
-                       cat("FAILED check 1. \nThe following columns are missing:\n")
+                       cat("FAILED check 1. \n\nThe following columns are missing:\n")
                        cat(paste0("-", missing_columns, "\n"))
                      }
                    }
@@ -66,24 +65,63 @@ checks_server <- function(id, data, file_upload) {
                  
                  
                  output$check_2 <- renderPrint({
-                   if (!is.null(file_upload()) & input$selected_check == "selected_check_2") {
-                       req(input$column)
-                       uprns <- data()[, input$column, drop = FALSE]
-                       duplicate_count = sum(duplicated(na.omit(uprns)))
-                       
-                       # Output the result
-                       if (duplicate_count == 0) {
-                         cat("PASSED check 2. \nNo duplicate UPRNs are present.\n")
-                       } else {
-                         cat(
-                           "FAILED check 2. \nThere are:",
-                           format(duplicate_count, big.mark = ","),
-                           "duplicates within the '", input$column, "' column of the uploaded data.\n"
-                         )
-                       }
-                       
+                   if (!is.null(file_upload()) &
+                       input$selected_check == "2. Duplicate UPRNs") {
+                     uprns <- data()[, 1, drop = FALSE]
+                     duplicate_count = sum(duplicated(na.omit(uprns)))
+                     
+                     # Output the result
+                     if (duplicate_count == 0) {
+                       cat("PASSED check 2. \n\nNo duplicate UPRNs are present.\n")
+                     } else {
+                       cat(
+                         "FAILED check 2. \n\nThere are: ",
+                         format(duplicate_count, big.mark = ","),
+                         " duplicates within the '",
+                         colnames(data())[[1]],
+                         "' column of the uploaded data.\n",
+                         sep = ""
+                       )
                      }
+                     
+                   }
                  })
+                 
+                 
+                 output$check_3 <- renderPrint({
+                   if (!is.null(file_upload()) &
+                       input$selected_check == "3. Current Technology") {
+                     data = data()
+                     check_3_1 = 0
+                     check_3_2 = 0
+                     check_3_3 = 0
+                     
+                     if (all(is.numeric(data$current_max_download_speed), na.rm = TRUE)) {
+                       check_3_1 = 1
+                     }
+                     
+                     if (all(data$current_max_download_speed > 0, na.rm = TRUE)) {
+                       check_3_2 = 1
+                     }
+                     
+                     if (any(data$current_technology == "FTTP") &&
+                         all(data$current_max_download_speed[data$current_technology == "FTTP"] >= 1000, na.rm = TRUE)) {
+                       check_3_3 = 1
+                     }
+                     
+                     if (check_3_1 + check_3_2 + check_3_3 == 3) {
+                       cat("PASSED check 3.\n")
+                     } else {
+                       cat("FAILED check 3.\n")
+                     }
+                     
+                   }
+                   
+                 })
+                 
+                 
+                 
+                 
                })
   
 }
