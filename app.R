@@ -11,6 +11,8 @@ for (packages in list_of_packages) {
 }
 
 # Define UI
+version = "0.3.1"
+url <- a("Thomas Hudson (S&DI)", href = paste0('mailto:thomas.hudson@dcms.gov.uk?subject=CMT%20pre-triage%20application%20v',version ,'%20-%20'))
 info_text = readr::read_file("lorum.txt")
 source("checks_module.R")
 source("summary_module.R")
@@ -42,13 +44,17 @@ ui <- fluidPage(
                 verbatimTextOutput("file_info"),
                 verbatimTextOutput("upload_output"),
                 verbatimTextOutput("detailed_upload_output")
-            )
+            ),
+            
+            
         )),
         
         tabPanel("Data Summary",  summary_ui("summary_module", "Summary UI")),
         
         tabPanel("Data Checks",  checks_ui("checks_module", "Checks UI"))
-    )
+    ),
+    hr(),
+    tagList("Version ", version," - work in progress - ", url)
 )
 
 
