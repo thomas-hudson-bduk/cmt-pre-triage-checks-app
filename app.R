@@ -1,5 +1,5 @@
 # Install packages if they are not already installed
-list_of_packages <- c("shiny", "DT", "dplyr", "data.table")
+list_of_packages <- c("shiny", "DT", "dplyr", "data.table", "readr")
 new_packages <-
   list_of_packages[!(list_of_packages %in% installed.packages()[, "Package"])]
 if (length(new_packages) > 0) {
