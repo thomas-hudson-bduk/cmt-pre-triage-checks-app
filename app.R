@@ -1,18 +1,19 @@
 # Install packages if they are not already installed
 list_of_packages <- c("shiny", "DT", "dplyr", "data.table", "readr")
 new_packages <-
-  list_of_packages[!(list_of_packages %in% installed.packages()[, "Package"])]
+    list_of_packages[!(list_of_packages %in% installed.packages()[, "Package"])]
 if (length(new_packages) > 0) {
-  install.packages(new_packages)
+    install.packages(new_packages)
 }
 # Load packages
 for (packages in list_of_packages) {
-  suppressPackageStartupMessages(sapply(packages, library, character.only = TRUE))
+    suppressPackageStartupMessages(sapply(packages, library, character.only = TRUE))
 }
 
 # Define UI
 info_text = readr::read_file("lorum.txt")
 source("checks_module.R")
+source("summary_module.R")
 
 ui <- fluidPage(
     tags$head(tags$style(
@@ -43,6 +44,8 @@ ui <- fluidPage(
                 verbatimTextOutput("detailed_upload_output")
             )
         )),
+        
+        tabPanel("Data Summary",  summary_ui("summary_module", "Summary UI")),
         
         tabPanel("Data Checks",  checks_ui("checks_module", "Checks UI"))
     )
@@ -86,13 +89,21 @@ server <- function(input, output) {
     })
     
     data <- reactive({
-        data <- fread(input$file_upload$datapath)
-        data
+        df <- fread(input$file_upload$datapath)
+        data <- as.data.frame(df)
+    })
+    
+    file_upload <- reactive({
+        input$file_upload
     })
     
     checks_server("checks_module",
                   data = data,
-                  file_upload = reactive(input$file_upload))
+                  file_upload = file_upload)
+    
+    summary_server("summary_module",
+                   data = data,
+                   file_upload = file_upload)
     
     output$upload_output <- renderPrint({
         cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]),
