@@ -1,7 +1,16 @@
-library(shiny)
+# Install packages if they are not already installed
+list_of_packages <- c("shiny", "DT", "dplyr", "data.table")
+new_packages <-
+  list_of_packages[!(list_of_packages %in% installed.packages()[, "Package"])]
+if (length(new_packages) > 0) {
+  install.packages(new_packages)
+}
+# Load packages
+for (packages in list_of_packages) {
+  suppressPackageStartupMessages(sapply(packages, library, character.only = TRUE))
+}
 
-# Define UI ----
-
+# Define UI
 info_text = readr::read_file("lorum.txt")
 source("checks_module.R")
 
