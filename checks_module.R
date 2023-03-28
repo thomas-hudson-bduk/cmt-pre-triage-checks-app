@@ -1,127 +1,122 @@
-required_columns <-
-  as.vector(read.csv(
-    "required_columns.csv",
-    header = FALSE,
-    colClasses = "character"
-  )$V1)
+# Install packages if they are not already installed
+list_of_packages <- c("shiny", "DT", "dplyr", "data.table", "readr")
+new_packages <-
+    list_of_packages[!(list_of_packages %in% installed.packages()[, "Package"])]
+if (length(new_packages) > 0) {
+    install.packages(new_packages)
+}
+# Load packages
+for (packages in list_of_packages) {
+    suppressPackageStartupMessages(sapply(packages, library, character.only = TRUE))
+}
 
-# Define the UI for a module
-checks_ui <- function(id, label = "checks_ui") {
-  ns <- NS(id)
-  sidebarLayout(
-    sidebarPanel(
-      selectInput(
-        inputId = ns("selected_check"),
-        label = "",
-        choices = c("1. Column names",
-                    "2. Duplicate UPRNs",
-                    "3. Current Technology")
-      ),
-      conditionalPanel(
-        condition = "input.selected_check == `2. Duplicate UPRNs`",
-        selectInput("column", label = "Select a column:", choices = NULL)
-      )
-    ),
-    mainPanel(
-      verbatimTextOutput(ns("upload_status")),
-      verbatimTextOutput(ns("check_1")),
-      verbatimTextOutput(ns("check_2")),
-      verbatimTextOutput(ns("check_3"))
+# Define UI
+info_text = readr::read_file("lorum.txt")
+source("checks_module.R")
+source("summary_module.R")
+
+ui <- fluidPage(
+    tags$head(tags$style(
+        HTML("pre { white-space: pre-wrap; word-break: keep-all; }")
+    )),
+    
+    navbarPage(
+        title = "CMT pre-triage application",
+        
+        tabPanel("Information", info_text),
+        
+        tabPanel("File Upload", sidebarLayout(
+            sidebarPanel(
+                fileInput(inputId = "file_upload", label = "Upload CSV File"),
+                numericInput(
+                    "size",
+                    "Max File Size (MB)",
+                    value = 1000,
+                    min = 0,
+                    max = 10000,
+                    step = 100
+                ),
+                actionButton("detailed_upload", "Detailed Output")
+            ),
+            mainPanel(
+                verbatimTextOutput("file_info"),
+                verbatimTextOutput("upload_output"),
+                verbatimTextOutput("detailed_upload_output")
+            )
+        )),
+        
+        tabPanel("Data Summary",  summary_ui("summary_module", "Summary UI")),
+        
+        tabPanel("Data Checks",  checks_ui("checks_module", "Checks UI"))
     )
-  )
+)
+
+
+# Define server logic ----
+server <- function(input, output) {
+    observe({
+        options(shiny.maxRequestSize = input$size * 1024 ^ 2)
+    })
+    
+    output$file_info <- renderPrint({
+        if (is.null(input$file_upload)) {
+            cat("No file uploaded.")
+        } else {
+            cat(
+                "File name:\t",
+                input$file_upload$name,
+                "\nFile type:\t",
+                input$file_upload$type,
+                "\nFile extension:\t",
+                tools::file_ext(input$file_upload$name),
+                "\nFile size:\t",
+                round(input$file_upload$size / 1024 ^ 2, 1),
+                " MB\n\n",
+                sep = ""
+            )
+        }
+    })
+    
+    upload_output <- reactive({
+        req(input$file_upload)
+        temp_file <- tempfile()
+        sink(temp_file)
+        fread(input$file_upload$datapath, verbose = TRUE)
+        sink()
+        output <- readLines(temp_file)
+        file.remove(temp_file)
+        output
+    })
+    
+    data <- reactive({
+        df <- fread(input$file_upload$datapath)
+        data <- as.data.frame(df)
+    })
+    
+    file_upload <- reactive({
+        input$file_upload
+    })
+    
+    checks_server("checks_module",
+                  data = data,
+                  file_upload = file_upload)
+    
+    summary_server("summary_module",
+                   data = data,
+                   file_upload = file_upload)
+    
+    output$upload_output <- renderPrint({
+        cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]),
+            sep = "\n")
+    })
+    
+    output$detailed_upload_output <- renderPrint({
+        if (input$detailed_upload %% 2 == 1) {
+            cat(upload_output(), sep = "\n")
+        }
+    })
+    
 }
 
-# Define the server logic for a module
-checks_server <- function(id, data, file_upload) {
-  moduleServer(id,
-               function(input, output, session) {
-                 observeEvent(file_upload(), {
-                   updateSelectInput(session, "column", choices = colnames(data()))
-                 })
-                 
-                 
-                 output$upload_status <- renderPrint({
-                   if (is.null(file_upload())) {
-                     cat("No file uploaded.")
-                   }
-                 })
-                 
-                 output$check_1 <- renderPrint({
-                   if (!is.null(file_upload()) &
-                       input$selected_check == "1. Column names") {
-                     # Check if all the required columns exist in the data table
-                     missing_columns <-
-                       setdiff(tolower(required_columns), tolower(colnames(data())))
-                     
-                     # Output the result
-                     if (length(missing_columns) == 0) {
-                       cat("PASSED check 1. \n\nAll required columns are present.\n")
-                     } else {
-                       cat("FAILED check 1. \n\nThe following columns are missing:\n")
-                       cat(paste0("-", missing_columns, "\n"))
-                     }
-                   }
-                 })
-                 
-                 
-                 output$check_2 <- renderPrint({
-                   if (!is.null(file_upload()) &
-                       input$selected_check == "2. Duplicate UPRNs") {
-                     uprns <- data()[, 1, drop = FALSE]
-                     duplicate_count = sum(duplicated(na.omit(uprns)))
-                     
-                     # Output the result
-                     if (duplicate_count == 0) {
-                       cat("PASSED check 2. \n\nNo duplicate UPRNs are present.\n")
-                     } else {
-                       cat(
-                         "FAILED check 2. \n\nThere are: ",
-                         format(duplicate_count, big.mark = ","),
-                         " duplicates within the '",
-                         colnames(data())[[1]],
-                         "' column of the uploaded data.\n",
-                         sep = ""
-                       )
-                     }
-                     
-                   }
-                 })
-                 
-                 
-                 output$check_3 <- renderPrint({
-                   if (!is.null(file_upload()) &
-                       input$selected_check == "3. Current Technology") {
-                     data = data()
-                     check_3_1 = 0
-                     check_3_2 = 0
-                     check_3_3 = 0
-                     
-                     if (all(is.numeric(data$current_max_download_speed), na.rm = TRUE)) {
-                       check_3_1 = 1
-                     }
-                     
-                     if (all(data$current_max_download_speed > 0, na.rm = TRUE)) {
-                       check_3_2 = 1
-                     }
-                     
-                     if (any(data$current_technology == "FTTP") &&
-                         all(data$current_max_download_speed[data$current_technology == "FTTP"] >= 1000, na.rm = TRUE)) {
-                       check_3_3 = 1
-                     }
-                     
-                     if (check_3_1 + check_3_2 + check_3_3 == 3) {
-                       cat("PASSED check 3.\n")
-                     } else {
-                       cat("FAILED check 3.\n")
-                     }
-                     
-                   }
-                   
-                 })
-                 
-                 
-                 
-                 
-               })
-  
-}
+# Run the app ----
+shinyApp(ui = ui, server = server)
