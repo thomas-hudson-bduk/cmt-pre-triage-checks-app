@@ -1,5 +1,5 @@
 # Define the list of packages to load
-packages <- c("shiny", "DT", "dplyr", "data.table", "readr")
+packages <- c("shiny", "DT", "dplyr", "data.table", "readr","htmltools")
 
 # Loop through the packages and install/load them one at a time
 for (pkg in packages) {

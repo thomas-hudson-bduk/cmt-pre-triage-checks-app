@@ -40,7 +40,7 @@ summary_server <- function(id, data, file_upload) {
     id,
     function(input, output, session) {
       observeEvent(file_upload(), {
-        updateSelectInput(session, "column", choices = colnames(data()))
+        updateSelectInput(session, "column", choices = colnames(data))
       })
 
 
@@ -52,25 +52,25 @@ summary_server <- function(id, data, file_upload) {
 
       output$summary_data_table <- renderDataTable({
         if (!is.null(file_upload()) & input$view == "head") {
-          head(data())
+          head(data)
         } else if (!is.null(file_upload()) &
           input$view == "full") {
-          data()
+          data
         }
       })
 
       output$column_summary <- renderPrint({
         if (!is.null(file_upload()) & input$view == "summary") {
-          df <- data()
+          df <- data
           df <- df[, input$column, drop = FALSE]
-          # print(data())
+          # print(data)
           summary(df)
         }
       })
 
       output$column_counts <- renderPrint({
         if (!is.null(file_upload()) & input$view == "summary") {
-          df <- data()
+          df <- data
           df <- df[, input$column, drop = FALSE]
 
           result <- as.data.frame(t(
@@ -92,7 +92,7 @@ summary_server <- function(id, data, file_upload) {
 
       output$unique_values <- renderDataTable(rownames = FALSE, {
         if (!is.null(file_upload()) && input$view == "summary" && as.logical(input$show_unique)) {
-          as.data.frame(table(data()[, input$column, drop = FALSE]))
+          as.data.frame(table(data[, input$column, drop = FALSE]))
         }
       })
     }
