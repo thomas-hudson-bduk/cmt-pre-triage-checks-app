@@ -34,7 +34,42 @@ ui <- fluidPage(
                 verbatimTextOutput("detailed_upload_output")
             ),
         )),
-        tabPanel("Data Summary", summary_ui("summary_module", "Summary UI")),
+        tabPanel("Data Summary", 
+                 sidebarLayout(
+                     sidebarPanel(
+                         selectInput(
+                             inputId = "view",
+                             label = "",
+                             choices = c(
+                                 "Head" = "head",
+                                 "Full data" = "full",
+                                 "Column summary" = "summary"
+                             ),
+                             selected = "head"
+                         ),
+                         conditionalPanel(condition = "input.view == 'summary'",
+                         selectInput("column", label = "Select a column:", choices = NULL),
+                         radioButtons(
+                             inputId = "show_unique",
+                             label = "Show unique values:",
+                             choices = c("Yes" = TRUE, "No" = FALSE),
+                             selected = FALSE
+                         )),
+                         helpText(
+                             "The 'Select a column' and input is only relevant for the 'Column summary' option."
+                         )
+                     ),
+                     mainPanel(
+                         verbatimTextOutput("upload_status"),
+                         dataTableOutput("summary_data_table"),
+                         verbatimTextOutput("column_summary"),
+                         verbatimTextOutput("column_counts"),
+                         dataTableOutput("unique_values"),
+                     )
+                 )
+                 
+                 
+                 ),
         tabPanel("Data Checks", checks_ui("checks_module", "Checks UI"))
     ),
     hr(),
@@ -43,7 +78,7 @@ ui <- fluidPage(
 
 
 # Define server logic ----
-server <- function(input, output) {
+server <- function(input, output, session) {
     observe({
         options(shiny.maxRequestSize = input$size * 1024^2)
     })
@@ -92,10 +127,6 @@ server <- function(input, output) {
         file_upload = file_upload
     )
 
-    summary_server("summary_module",
-        data = data(),
-        file_upload = file_upload
-    )
 
     output$upload_output <- renderPrint({
         cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]),
@@ -108,6 +139,70 @@ server <- function(input, output) {
             cat(upload_output(), sep = "\n")
         }
     })
+    
+    
+    
+    
+    
+    observeEvent(file_upload(), {
+        updateSelectInput(session, "column", choices = colnames(data()))
+    })
+    
+    
+    output$upload_status <- renderPrint({
+        if (is.null(file_upload())) {
+            cat("No file uploaded.")
+        }
+    })
+    
+    output$summary_data_table <- renderDataTable({
+        if (!is.null(file_upload()) & input$view == "head") {
+            head(data())
+        } else if (!is.null(file_upload()) &
+                   input$view == "full") {
+            data()
+        }
+    })
+    
+    output$column_summary <- renderPrint({
+        if (!is.null(file_upload()) & input$view == "summary") {
+            df <- data()
+            df <- df[, input$column, drop = FALSE]
+            # print(data)
+            summary(df)
+        }
+    })
+    
+    output$column_counts <- renderPrint({
+        if (!is.null(file_upload()) & input$view == "summary") {
+            df <- data()
+            df <- df[, input$column, drop = FALSE]
+            
+            result <- as.data.frame(t(
+                list(
+                    Row_count = nrow(df),
+                    NULL_count = sum(is.na(df)),
+                    Unique_count = n_distinct(na.omit(df)),
+                    Duplicate_count = sum(duplicated(na.omit(df)))
+                )
+            ))
+            result_df <- as.data.frame(t(result))
+            colnames(result_df) <- "Counts"
+            result_df <- result_df[, 1, drop = FALSE]
+            
+            result_df
+        }
+    })
+    
+    
+    output$unique_values <- renderDataTable(rownames = FALSE, {
+        if (!is.null(file_upload()) && input$view == "summary" && as.logical(input$show_unique)) {
+            as.data.frame(table(data()[, input$column, drop = FALSE]))
+        }
+    })
+    
+    
+    
 }
 
 # Run the app ----
