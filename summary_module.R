@@ -23,7 +23,6 @@ summary_ui <- function(id, label = "summary_ui") {
       helpText(
         "The 'Select a column' and input is only relevant for the 'Column summary' option."
       )
-      
     ),
     mainPanel(
       verbatimTextOutput(ns("upload_status")),
@@ -37,66 +36,65 @@ summary_ui <- function(id, label = "summary_ui") {
 
 # Define the server logic for a module
 summary_server <- function(id, data, file_upload) {
-  moduleServer(id,
-               function(input, output, session) {
-                 observeEvent(file_upload(), {
-                   updateSelectInput(session, "column", choices = colnames(data()))
-                 })
-                 
-                 
-                 output$upload_status <- renderPrint({
-                   if (is.null(file_upload())) {
-                     cat("No file uploaded.")
-                   }
-                 })
-                 
-                 output$summary_data_table <- renderDataTable({
-                   if (!is.null(file_upload()) & input$view == "head") {
-                     head(data())
-                   } else if (!is.null(file_upload()) &
-                              input$view == "full") {
-                     data()
-                   }
-                 })
-                 
-                 output$column_summary <- renderPrint({
-                   if (!is.null(file_upload()) & input$view == "summary") {
-                     df <- data()
-                     df <- df[, input$column, drop = FALSE]
-                     #print(data())
-                     summary(df)
-                   }
-                 })
-                 
-                 output$column_counts <- renderPrint({
-                   if (!is.null(file_upload()) & input$view == "summary") {
-                     df <- data()
-                     df <- df[, input$column, drop = FALSE]
-                     
-                     result <- as.data.frame(t(
-                       list(
-                         Row_count = nrow(df),
-                         NULL_count = sum(is.na(df)),
-                         Unique_count = n_distinct(na.omit(df)),
-                         Duplicate_count = sum(duplicated(na.omit(df)))
-                       )
-                     ))
-                     result_df <- as.data.frame(t(result))
-                     colnames(result_df) <- "Counts"
-                     result_df <- result_df[, 1, drop = FALSE]
-                     
-                     result_df
-                   }
-                 })
-                 
-                 
-                 output$unique_values <- renderDataTable(rownames = FALSE, {
-                   if (!is.null(file_upload()) && input$view == "summary" && as.logical(input$show_unique)) {
-                       as.data.frame(table(data()[, input$column, drop = FALSE]))
-                   }
-                 })
-                 
-                 
-               })
-  
+  moduleServer(
+    id,
+    function(input, output, session) {
+      observeEvent(file_upload(), {
+        updateSelectInput(session, "column", choices = colnames(data()))
+      })
+
+
+      output$upload_status <- renderPrint({
+        if (is.null(file_upload())) {
+          cat("No file uploaded.")
+        }
+      })
+
+      output$summary_data_table <- renderDataTable({
+        if (!is.null(file_upload()) & input$view == "head") {
+          head(data())
+        } else if (!is.null(file_upload()) &
+          input$view == "full") {
+          data()
+        }
+      })
+
+      output$column_summary <- renderPrint({
+        if (!is.null(file_upload()) & input$view == "summary") {
+          df <- data()
+          df <- df[, input$column, drop = FALSE]
+          # print(data())
+          summary(df)
+        }
+      })
+
+      output$column_counts <- renderPrint({
+        if (!is.null(file_upload()) & input$view == "summary") {
+          df <- data()
+          df <- df[, input$column, drop = FALSE]
+
+          result <- as.data.frame(t(
+            list(
+              Row_count = nrow(df),
+              NULL_count = sum(is.na(df)),
+              Unique_count = n_distinct(na.omit(df)),
+              Duplicate_count = sum(duplicated(na.omit(df)))
+            )
+          ))
+          result_df <- as.data.frame(t(result))
+          colnames(result_df) <- "Counts"
+          result_df <- result_df[, 1, drop = FALSE]
+
+          result_df
+        }
+      })
+
+
+      output$unique_values <- renderDataTable(rownames = FALSE, {
+        if (!is.null(file_upload()) && input$view == "summary" && as.logical(input$show_unique)) {
+          as.data.frame(table(data()[, input$column, drop = FALSE]))
+        }
+      })
+    }
+  )
 }
