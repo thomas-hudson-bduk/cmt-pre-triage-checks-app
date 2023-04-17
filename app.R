@@ -35,6 +35,7 @@ ui <- fluidPage(
             mainPanel(
                 verbatimTextOutput("file_info"),
                 verbatimTextOutput("upload_output"),
+                verbatimTextOutput("upload_output_2"),
                 verbatimTextOutput("detailed_upload_output")
             ),
         )),
@@ -157,6 +158,13 @@ server <- function(input, output, session) {
         cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]),
             sep = "\n"
         )
+    })
+
+    output$upload_output_2 <- renderPrint({
+        
+        sep_value <- sub('.*sep=\'(.*?)\'.*', '\\1', upload_output()[grep("sep='", upload_output())[1]])
+        cat("delimiter = ", sep_value, "\n")
+
     })
 
     output$detailed_upload_output <- renderPrint({
