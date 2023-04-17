@@ -162,7 +162,7 @@ server <- function(input, output, session) {
 
     output$upload_output_2 <- renderPrint({
         
-        sep_value <- sub('.*sep=\'(.*?)\'.*', '\\1', upload_output()[grep("sep='", upload_output())[1]])
+        sep_value <- sub('.*sep=\'(.*?)\'.*', '\\1', upload_output()[grep("sep='", upload_output())[-1]])
         cat("delimiter = ", sep_value, "\n")
 
     })
