@@ -4,6 +4,12 @@ source("packages.R")
 version <- "0.4"
 url <- a("Thomas Hudson (S&DI)", href = paste0("mailto:thomas.hudson@dcms.gov.uk?subject=CMT%20pre-triage%20application%20v", version, "%20-%20"))
 info_text <- readr::read_file("lorum.txt")
+required_columns <-
+  as.vector(read.csv(
+    "required_columns.csv",
+    header = FALSE,
+    colClasses = "character"
+  )$V1)
 
 # Define UI ----
 ui <- fluidPage(
@@ -228,6 +234,9 @@ server <- function(input, output, session) {
         }
         if (!is.null(file_upload()) & input$selected_check == "option_12") {
             source("check_12.R", local = TRUE)
+        }
+                if (!is.null(file_upload()) & input$selected_check == "option_13") {
+            source("check_13.R", local = TRUE)
         }
     })
 }
