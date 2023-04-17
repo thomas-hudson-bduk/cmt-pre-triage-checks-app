@@ -4,8 +4,6 @@ source("packages.R")
 version <- "0.4"
 url <- a("Thomas Hudson (S&DI)", href = paste0("mailto:thomas.hudson@dcms.gov.uk?subject=CMT%20pre-triage%20application%20v", version, "%20-%20"))
 info_text <- readr::read_file("lorum.txt")
-source("checks_module.R")
-source("summary_module.R")
 
 # Define UI ----
 ui <- fluidPage(
@@ -34,43 +32,70 @@ ui <- fluidPage(
                 verbatimTextOutput("detailed_upload_output")
             ),
         )),
-        tabPanel("Data Summary", 
-                 sidebarLayout(
-                     sidebarPanel(
-                         selectInput(
-                             inputId = "view",
-                             label = "",
-                             choices = c(
-                                 "Head" = "head",
-                                 "Full data" = "full",
-                                 "Column summary" = "summary"
-                             ),
-                             selected = "head"
-                         ),
-                         conditionalPanel(condition = "input.view == 'summary'",
-                         selectInput("column", label = "Select a column:", choices = NULL),
-                         radioButtons(
-                             inputId = "show_unique",
-                             label = "Show unique values:",
-                             choices = c("Yes" = TRUE, "No" = FALSE),
-                             selected = FALSE
-                         )),
-                         helpText(
-                             "The 'Select a column' and input is only relevant for the 'Column summary' option."
-                         )
-                     ),
-                     mainPanel(
-                         verbatimTextOutput("upload_status"),
-                         dataTableOutput("summary_data_table"),
-                         verbatimTextOutput("column_summary"),
-                         verbatimTextOutput("column_counts"),
-                         dataTableOutput("unique_values"),
-                     )
-                 )
-                 
-                 
-                 ),
-        tabPanel("Data Checks", checks_ui("checks_module", "Checks UI"))
+        tabPanel(
+            "Data Summary",
+            sidebarLayout(
+                sidebarPanel(
+                    selectInput(
+                        inputId = "view",
+                        label = "",
+                        choices = c(
+                            "Head" = "head",
+                            "Full data" = "full",
+                            "Column summary" = "summary"
+                        ),
+                        selected = "head"
+                    ),
+                    conditionalPanel(
+                        condition = "input.view == 'summary'",
+                        selectInput("column_1", label = "Select a column:", choices = NULL),
+                        radioButtons(
+                            inputId = "show_unique",
+                            label = "Show unique values:",
+                            choices = c("Yes" = TRUE, "No" = FALSE),
+                            selected = FALSE
+                        )
+                    ),
+                    helpText(
+                        "The 'Select a column' and input is only relevant for the 'Column summary' option."
+                    )
+                ),
+                mainPanel(
+                    verbatimTextOutput("upload_status_1"),
+                    dataTableOutput("summary_data_table"),
+                    verbatimTextOutput("column_summary"),
+                    verbatimTextOutput("column_counts"),
+                    dataTableOutput("unique_values"),
+                )
+            )
+        ),
+        tabPanel("Data Checks", sidebarLayout(
+            sidebarPanel(
+                selectInput(
+                    inputId = "selected_check",
+                    label = "",
+                    choices = c(
+                        "5. File format" = "option_5",
+                        "6. Column presence" = "option_6",
+                        "7. Naming conventions" = "option_7",
+                        "8. Additional info (colours and N/A)" = "option_8",
+                        "9. Are non standard columns logical" = "option_9",
+                        "10. UPRN corruption and truncation" = "option_10",
+                        "11. Missing UPRNs" = "option_11",
+                        "12. Duplicate UPRNs" = "option_12",
+                        "13. Blank rows" = "option_13"
+                    )
+                ),
+                conditionalPanel(
+                    condition = "input.selected_check == `option_12`",
+                    selectInput("column_2", label = "Select a column:", choices = NULL)
+                )
+            ),
+            mainPanel(
+                verbatimTextOutput("upload_status_2"),
+                verbatimTextOutput("checks")
+            )
+        ))
     ),
     hr(),
     tagList("Version ", version, " - work in progress - ", url)
@@ -122,12 +147,6 @@ server <- function(input, output, session) {
         input$file_upload
     })
 
-    checks_server("checks_module",
-        data = data(),
-        file_upload = file_upload
-    )
-
-
     output$upload_output <- renderPrint({
         cat(gsub("wall clock time", "seconds.", upload_output()[grep("wall clock time", upload_output())[1]]),
             sep = "\n"
@@ -139,45 +158,42 @@ server <- function(input, output, session) {
             cat(upload_output(), sep = "\n")
         }
     })
-    
-    
-    
-    
-    
+
     observeEvent(file_upload(), {
-        updateSelectInput(session, "column", choices = colnames(data()))
+        updateSelectInput(session, "column_1", choices = colnames(data()))
+        updateSelectInput(session, "column_2", choices = colnames(data()))
     })
-    
-    
-    output$upload_status <- renderPrint({
+
+
+    output$upload_status_1 <- renderPrint({
         if (is.null(file_upload())) {
             cat("No file uploaded.")
         }
     })
-    
+
     output$summary_data_table <- renderDataTable({
         if (!is.null(file_upload()) & input$view == "head") {
             head(data())
         } else if (!is.null(file_upload()) &
-                   input$view == "full") {
+            input$view == "full") {
             data()
         }
     })
-    
+
     output$column_summary <- renderPrint({
         if (!is.null(file_upload()) & input$view == "summary") {
             df <- data()
-            df <- df[, input$column, drop = FALSE]
+            df <- df[, input$column_1, drop = FALSE]
             # print(data)
             summary(df)
         }
     })
-    
+
     output$column_counts <- renderPrint({
         if (!is.null(file_upload()) & input$view == "summary") {
             df <- data()
-            df <- df[, input$column, drop = FALSE]
-            
+            df <- df[, input$column_1, drop = FALSE]
+
             result <- as.data.frame(t(
                 list(
                     Row_count = nrow(df),
@@ -189,20 +205,31 @@ server <- function(input, output, session) {
             result_df <- as.data.frame(t(result))
             colnames(result_df) <- "Counts"
             result_df <- result_df[, 1, drop = FALSE]
-            
+
             result_df
         }
     })
-    
-    
+
     output$unique_values <- renderDataTable(rownames = FALSE, {
         if (!is.null(file_upload()) && input$view == "summary" && as.logical(input$show_unique)) {
-            as.data.frame(table(data()[, input$column, drop = FALSE]))
+            as.data.frame(table(data()[, input$column_1, drop = FALSE]))
         }
     })
-    
-    
-    
+
+    output$upload_status_2 <- renderPrint({
+        if (is.null(file_upload())) {
+            cat("No file uploaded.")
+        }
+    })
+
+    output$checks <- renderPrint({
+        if (!is.null(file_upload()) & input$selected_check == "option_6") {
+            source("check_6.R", local = TRUE)
+        }
+        if (!is.null(file_upload()) & input$selected_check == "option_12") {
+            source("check_12.R", local = TRUE)
+        }
+    })
 }
 
 # Run the app ----

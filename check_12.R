@@ -1,5 +1,4 @@
-uploaded_data <- data()
-uprns <- uploaded_data[, 1]
+uprns <- data()[, 1]
 duplicate_count <- sum(duplicated(na.omit(uprns)))
 
 # Output the result
