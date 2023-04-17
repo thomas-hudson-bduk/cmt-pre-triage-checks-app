@@ -83,14 +83,14 @@ ui <- fluidPage(
                     label = "",
                     choices = c(
                         "5. File format" = "option_5",
-                        "6. Column presence" = "option_6",
+                        "6. Column presence (CMT to review)" = "option_6",
                         "7. Naming conventions" = "option_7",
                         "8. Additional info (colours and N/A)" = "option_8",
                         "9. Are non standard columns logical" = "option_9",
                         "10. UPRN corruption and truncation" = "option_10",
                         "11. Missing UPRNs" = "option_11",
-                        "12. Duplicate UPRNs" = "option_12",
-                        "13. Blank rows" = "option_13"
+                        "12. Duplicate UPRNs (CMT to review)" = "option_12",
+                        "13. Blank rows (CMT to review)" = "option_13"
                     )
                 ),
                 conditionalPanel(
